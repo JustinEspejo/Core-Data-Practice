@@ -7,11 +7,12 @@
 //
 
 import UIKit
+import CoreData
 
 class ViewController: UIViewController , UITableViewDataSource {
 
     @IBOutlet weak var tableView: UITableView!
-    var names = [String]()
+    var people = [NSManagedObject]()
 
     
     override func viewDidLoad() {
@@ -19,10 +20,28 @@ class ViewController: UIViewController , UITableViewDataSource {
         title = "\"The List\""
         tableView.registerClass(UITableViewCell.self,
             forCellReuseIdentifier: "Cell")    }
+
     
-    func tableView(tableView: UITableView,
-        numberOfRowsInSection section: Int) -> Int {
-            return names.count
+    override func viewWillAppear(animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        //1
+        let appDelegate =
+        UIApplication.sharedApplication().delegate as! AppDelegate
+        
+        let managedContext = appDelegate.managedObjectContext
+        
+        //2
+        let fetchRequest = NSFetchRequest(entityName: "Person")
+        
+        //3
+        do {
+            let results =
+            try managedContext.executeFetchRequest(fetchRequest)
+            people = results as! [NSManagedObject]
+        } catch let error as NSError {
+            print("Could not fetch \(error), \(error.userInfo)")
+        }
     }
     
     @IBAction func addName(sender: AnyObject) {
@@ -36,7 +55,7 @@ class ViewController: UIViewController , UITableViewDataSource {
             handler: { (action:UIAlertAction) -> Void in
                 
                 let textField = alert.textFields!.first
-                self.names.append(textField!.text!)
+                self.saveName(textField!.text!)
                 self.tableView.reloadData()
         })
         
@@ -57,6 +76,38 @@ class ViewController: UIViewController , UITableViewDataSource {
         
     }
     
+    func saveName(name: String) {
+        //1
+        let appDelegate =
+        UIApplication.sharedApplication().delegate as! AppDelegate
+        
+        let managedContext = appDelegate.managedObjectContext
+        
+        //2
+        let entity =  NSEntityDescription.entityForName("Person",
+            inManagedObjectContext:managedContext)
+        
+        let person = NSManagedObject(entity: entity!,
+            insertIntoManagedObjectContext: managedContext)
+        
+        //3
+        person.setValue(name, forKey: "name")
+        
+        //4
+        do {
+            try managedContext.save()
+            //5
+            people.append(person)
+        } catch let error as NSError  {
+            print("Could not save \(error), \(error.userInfo)")
+        }
+    }
+    
+    func tableView(tableView: UITableView,
+        numberOfRowsInSection section: Int) -> Int {
+            return people.count
+    }
+    
     func tableView(tableView: UITableView,
         cellForRowAtIndexPath
         indexPath: NSIndexPath) -> UITableViewCell {
@@ -64,9 +115,13 @@ class ViewController: UIViewController , UITableViewDataSource {
             let cell =
             tableView.dequeueReusableCellWithIdentifier("Cell")
             
-            cell!.textLabel!.text = names[indexPath.row]
+            let person = people[indexPath.row]
+            
+            cell!.textLabel!.text =
+                person.valueForKey("name") as? String
             
             return cell!
+            
     }
     
     
